@@ -23,6 +23,9 @@ stepFunctions:
     workflowSpike:
       events:
         - http:
+            path: start
+            method: POST
+        - http:
             path: continue
             method: POST
             action: SendTaskSuccess
