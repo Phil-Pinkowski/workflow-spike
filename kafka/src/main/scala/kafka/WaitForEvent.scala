@@ -3,53 +3,50 @@ package kafka
 import java.time.Duration
 import java.util.Properties
 
-import cats.effect.{ExitCode, IO, IOApp}
+import Workflow.poc.{BranchCompleteMessage, EventMessage, LogMessage, WaitForEventMessage}
 import com.typesafe.scalalogging.LazyLogging
 import config.ConfigSettings.BOOTSTRAP_SERVER
-import kafka.Schedule.{BRANCH_A_TOPIC, BRANCH_B_TOPIC}
-import kafka.messages.{BranchCompleteMessage, BranchCompleteMessageImplicits, EventMessage, EventMessageImplicits, LogMessageImplicits, WaitForEventMessage, WaitForEventMessageImplicits}
-import org.apache.kafka.streams.StreamsConfig
 import org.apache.kafka.streams.kstream.JoinWindows
-import org.apache.kafka.streams.scala.StreamsBuilder
-import org.apache.kafka.streams.scala.Serdes._
 import org.apache.kafka.streams.scala.ImplicitConversions._
+import org.apache.kafka.streams.scala.Serdes._
+import org.apache.kafka.streams.scala.StreamsBuilder
+import org.apache.kafka.streams.{KafkaStreams, StreamsConfig}
 
-object WaitForBranchAEvent extends IOApp with AvroImplicits with LazyLogging with WaitForEventConsumer {
-  val BRANCH_A_EVENTS: String = "BranchAEvents"
-  val BRANCH_A_COMPLETED_TOPIC: String = "BranchACompleted"
+object WaitForEvent extends App with LazyLogging with AvroImplicits {
 
-  def run(args: List[String]): IO[ExitCode] = {
-    createWaitForEventConsumer(BRANCH_A_TOPIC, BRANCH_A_EVENTS, BRANCH_A_COMPLETED_TOPIC)
-  }
-}
+  def waitForEvents(builder: StreamsBuilder, waitTopic: String, eventTopic: String, resultTopic: String): Unit = {
+    val waitForAEvents = builder.stream[String, WaitForEventMessage](waitTopic)
+    val aEvents = builder.stream[String, EventMessage](eventTopic)
 
-object WaitForBranchBEvent extends IOApp with AvroImplicits with LazyLogging with WaitForEventConsumer {
-  val BRANCH_B_EVENTS: String = "BranchBEvents"
-  val BRANCH_B_COMPLETED_TOPIC: String = "BranchBCompleted"
-
-  def run(args: List[String]): IO[ExitCode] = {
-    createWaitForEventConsumer(BRANCH_B_TOPIC, BRANCH_B_EVENTS, BRANCH_B_COMPLETED_TOPIC)
-  }
-}
-
-trait WaitForEventConsumer extends WaitForEventMessageImplicits with EventMessageImplicits with BranchCompleteMessageImplicits {
-  def createWaitForEventConsumer(waitTopic: String, eventTopic: String, resultTopic: String): IO[ExitCode] = {
-    val props = new Properties()
-    props.put(StreamsConfig.APPLICATION_ID_CONFIG, "poc-wait-for-event")
-    props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVER)
-
-    val builder = new StreamsBuilder()
-
-    val waitingForEvents = builder.stream[String, WaitForEventMessage](waitTopic)
-    val events = builder.stream[String, EventMessage](eventTopic)
-
-    waitingForEvents.join(
-      events)(
+    waitForAEvents.join(
+      aEvents)(
       (waitFor: WaitForEventMessage, event: EventMessage) => BranchCompleteMessage(waitFor.id, waitTopic, event.data),
       JoinWindows.of(Duration.ofDays(1))
     ).to(resultTopic)
-
-    IO.pure(ExitCode.Success)
   }
-}
 
+  final val BRANCH_A_TOPIC = "BranchA";
+  final val BRANCH_B_TOPIC = "BranchB";
+  final val BRANCH_A_EVENTS_TOPIC = "BranchAEvents";
+  final val BRANCH_B_EVENTS_TOPIC = "BranchBEvents";
+  final val BRANCH_A_COMPLETE_TOPIC = "BranchAComplete"
+  final val BRANCH_B_COMPLETE_TOPIC = "BranchBComplete"
+
+  val props = new Properties
+  props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVER)
+  props.put(StreamsConfig.APPLICATION_ID_CONFIG, "ScheduleConsumer")
+
+  val builder = new StreamsBuilder
+
+  waitForEvents(builder, BRANCH_A_TOPIC, BRANCH_A_EVENTS_TOPIC, BRANCH_A_COMPLETE_TOPIC)
+  waitForEvents(builder, BRANCH_B_TOPIC, BRANCH_B_EVENTS_TOPIC, BRANCH_B_COMPLETE_TOPIC)
+
+  val streams = new KafkaStreams(builder.build, props)
+
+  streams.start()
+
+  sys.ShutdownHookThread {
+    streams.close(Duration.ofSeconds(10))
+  }
+
+}

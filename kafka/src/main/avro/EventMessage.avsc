@@ -1,0 +1,19 @@
+{
+  "type": "record",
+  "name": "EventMessage",
+  "namespace": "Workflow.poc",
+  "fields": [
+    {
+      "name": "id",
+      "type": "string"
+    },
+    {
+      "name": "eventName",
+      "type": "string"
+    },
+    {
+      "name": "data",
+      "type": "string"
+    }
+  ]
+}

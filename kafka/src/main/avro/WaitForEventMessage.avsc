@@ -1,0 +1,15 @@
+{
+  "type": "record",
+  "name": "WaitForEventMessage",
+  "namespace": "Workflow.poc",
+  "fields": [
+    {
+      "name": "id",
+      "type": "string"
+    },
+    {
+      "name": "eventName",
+      "type": "string"
+    }
+  ]
+}

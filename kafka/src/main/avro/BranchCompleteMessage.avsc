@@ -1,0 +1,19 @@
+{
+  "type": "record",
+  "name": "BranchCompleteMessage",
+  "namespace": "Workflow.poc",
+  "fields": [
+    {
+      "name": "id",
+      "type": "string"
+    },
+    {
+      "name": "branch",
+      "type": "string"
+    },
+    {
+      "name": "data",
+      "type": "string"
+    }
+  ]
+}

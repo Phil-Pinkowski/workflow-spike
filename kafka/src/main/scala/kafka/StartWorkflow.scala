@@ -1,35 +1,33 @@
 package kafka
 
-import cats.effect.{ExitCode, IO, IOApp}
-import cats.syntax.functor._
-import com.typesafe.scalalogging.LazyLogging
-import fs2.kafka._
-import fs2.kafka.vulcan._
-import kafka.messages.{LogMessage, LogMessageImplicits}
-import config.ConfigSettings.BOOTSTRAP_SERVER
-import java.util.UUID.randomUUID;
+import java.util.Properties
+import java.util.UUID.randomUUID
 
-object StartWorkflow extends IOApp with AvroImplicits with LogMessageImplicits with LazyLogging {
+import Workflow.poc.LogMessage
+import com.typesafe.scalalogging.LazyLogging
+import config.ConfigSettings.{BOOTSTRAP_SERVER, SCHEMA_REGISTRY_URL}
+import io.confluent.kafka.serializers.{AbstractKafkaAvroSerDeConfig, KafkaAvroSerializer}
+import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig, ProducerRecord}
+import org.apache.kafka.common.serialization.StringSerializer;
+
+object StartWorkflow extends App with LazyLogging {
 
   final val START_WORKFLOW_TOPIC = "StartWorkflow"
 
-  def run(args: List[String]): IO[ExitCode] = {
+  val props = new Properties()
+  props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVER)
+  props.put(AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, SCHEMA_REGISTRY_URL);
+  props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, classOf[StringSerializer])
+  props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, classOf[KafkaAvroSerializer])
 
-    val producerSettings = ProducerSettings[IO, String, LogMessage]
-      .withBootstrapServers(BOOTSTRAP_SERVER)
+  val producer = new KafkaProducer[String, LogMessage](props)
 
-    val stream =
-      producerStream[IO]
-        .using(producerSettings)
-        .map { _ =>
-          val message = LogMessage(randomUUID().toString, "Hello, World!")
-          val record = ProducerRecord(START_WORKFLOW_TOPIC, message.id, message)
-          ProducerRecords.one(record)
-        }.map(records => {
-        logger.info(s"Sending Message: ${records}")
-        records
-      }).through(produce(producerSettings))
+  val message = LogMessage(randomUUID().toString, "Hello, World!")
 
-    stream.compile.drain.as(ExitCode.Success)
-  }
+  val record = new ProducerRecord[String, LogMessage](START_WORKFLOW_TOPIC, message.id, message)
+
+  producer.send(record)
+
+  producer.flush()
+
 }
