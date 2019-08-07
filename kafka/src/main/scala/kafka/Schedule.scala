@@ -18,7 +18,7 @@ object Schedule extends App with LazyLogging with AvroImplicits {
 
   val props = new Properties
   props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVER)
-  props.put(StreamsConfig.APPLICATION_ID_CONFIG, "ScheduleConsumer")
+  props.put(StreamsConfig.APPLICATION_ID_CONFIG, "Scheduler")
 
   val builder = new StreamsBuilder
 

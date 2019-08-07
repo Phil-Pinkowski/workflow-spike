@@ -3,7 +3,7 @@ package kafka
 import java.time.Duration
 import java.util.Properties
 
-import Workflow.poc.{BranchCompleteMessage, EventMessage, LogMessage, WaitForEventMessage}
+import Workflow.poc.{BranchCompleteMessage, EventMessage, WaitForEventMessage}
 import com.typesafe.scalalogging.LazyLogging
 import config.ConfigSettings.BOOTSTRAP_SERVER
 import org.apache.kafka.streams.kstream.JoinWindows
@@ -34,7 +34,7 @@ object WaitForEvent extends App with LazyLogging with AvroImplicits {
 
   val props = new Properties
   props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVER)
-  props.put(StreamsConfig.APPLICATION_ID_CONFIG, "ScheduleConsumer")
+  props.put(StreamsConfig.APPLICATION_ID_CONFIG, "WaitForEvents")
 
   val builder = new StreamsBuilder
 
